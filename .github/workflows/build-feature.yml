@@ -1,0 +1,20 @@
+name: Build Video Download
+
+on:
+  push:
+    branches:
+      - p/limalivy@users.noreply.github.com/video-download
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      checkout_ref: ${{ github.sha }}
+      nightly: true
+      build_normal_ipa: true
+      build_trollstore_tipa: false
+      build_jailbroken_ipa: false

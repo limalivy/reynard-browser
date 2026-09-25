@@ -1375,8 +1375,11 @@ extension TabManagerImplementation: ContentDelegate {
         }
         
         let hasImageSource = element.type == .image && element.srcUri?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        let hasDownloadableVideo = element.type == .video
+            && (element.videoDuration ?? 0) > 10
+            && element.videoSrcUri?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
         let hasLink = element.linkUri?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
-        guard hasImageSource || hasLink else {
+        guard hasImageSource || hasDownloadableVideo || hasLink else {
             return
         }
         

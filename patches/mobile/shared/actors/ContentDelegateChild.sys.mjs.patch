@@ -1,8 +1,46 @@
 diff --git a/mobile/shared/actors/ContentDelegateChild.sys.mjs b/mobile/shared/actors/ContentDelegateChild.sys.mjs
-index 2bf88b9e9e52..2d2a200d45e3 100644
+index 2bf88b9e9e..3c60527f77 100644
 --- a/mobile/shared/actors/ContentDelegateChild.sys.mjs
 +++ b/mobile/shared/actors/ContentDelegateChild.sys.mjs
-@@ -198,6 +198,8 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+@@ -166,6 +166,19 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+         const isMedia =
+           elementType === "HTMLVideoElement" ||
+           elementType === "HTMLAudioElement";
++        const video =
++          aEvent.composedPath().find(element => element.localName === "video") ||
++          node.ownerDocument
++            .elementsFromPoint(aEvent.clientX, aEvent.clientY)
++            .find(element => element.localName === "video");
++        const videoDuration = Number.isFinite(video?.duration)
++          ? video.duration
++          : null;
++        const videoSrc = video?.currentSrc || null;
++        const hasDownloadableVideo =
++          videoDuration > 10 &&
++          /^https?:\/\//i.test(videoSrc) &&
++          !/\.(?:m3u8|mpd)(?:[?#]|$)/i.test(videoSrc);
+         let elementSrc = (isImage || isMedia) && (node.currentSrc || node.src);
+         if (elementSrc) {
+           const isBlob = elementSrc.startsWith("blob:");
+@@ -177,4 +190,4 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+-        if (uri || isImage || isMedia) {
++        if (uri || isImage || isMedia || hasDownloadableVideo) {
+           const msg = {
+             // We don't have full zoom on Android, so using CSS coordinates
+             // here is fine, since the CSS coordinate spaces match between the
+@@ -188,8 +201,10 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+             uri,
+             title: (title && title.substring(0, MAX_TEXT_LENGTH)) || null,
+             alt: (alt && alt.substring(0, MAX_TEXT_LENGTH)) || null,
+-            elementType,
++            elementType: hasDownloadableVideo ? "HTMLVideoElement" : elementType,
+             elementSrc: elementSrc || null,
++            videoSrc,
++            videoDuration,
+             textContent:
+               (node.textContent &&
+                 node.textContent.substring(0, MAX_TEXT_LENGTH)) ||
+@@ -198,6 +213,8 @@ export class ContentDelegateChild extends GeckoViewActorChild {
                (node.innerText &&
                  node.innerText.substring(0, MAX_TEXT_LENGTH)) ||
                null,

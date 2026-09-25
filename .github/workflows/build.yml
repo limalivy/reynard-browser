@@ -33,7 +33,7 @@ permissions:
 
 jobs:
   prepare:
-    if: ${{ github.repository_owner == 'minh-ton' }}
+    if: ${{ github.repository_owner == 'minh-ton' || github.repository_owner == 'limalivy' }}
     name: Select build variants
     runs-on: ubuntu-latest
     outputs:

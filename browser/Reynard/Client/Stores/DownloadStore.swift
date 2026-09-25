@@ -107,6 +107,7 @@ final class DownloadStore: NSObject {
         let fileName: String
         let destinationURL: URL
         let mimeType: String?
+        let expectsVideo: Bool
         let addedAt: Date
         let task: URLSessionDownloadTask
         var expectedBytes: Int64?
@@ -122,6 +123,7 @@ final class DownloadStore: NSObject {
             fileName: String,
             destinationURL: URL,
             mimeType: String?,
+            expectsVideo: Bool,
             addedAt: Date,
             task: URLSessionDownloadTask
         ) {
@@ -131,6 +133,7 @@ final class DownloadStore: NSObject {
             self.fileName = fileName
             self.destinationURL = destinationURL
             self.mimeType = mimeType
+            self.expectsVideo = expectsVideo
             self.addedAt = addedAt
             self.task = task
             self.expectedBytes = nil
@@ -298,6 +301,31 @@ final class DownloadStore: NSObject {
                     originalURL: URL(string: request.originalUrl ?? ""),
                     suggestedFileName: request.filename,
                     mimeType: "application/pdf"
+                )
+                return nil
+            }
+        )
+    }
+
+    func pendingDownload(forVideoURL sourceURL: URL) -> PendingDownload? {
+        guard URLUtils.isWebURL(sourceURL),
+              !["m3u8", "mpd"].contains(sourceURL.pathExtension.lowercased()) else {
+            return nil
+        }
+
+        return PendingDownload(
+            fileName: resolvedFileName(
+                suggestedFileName: nil,
+                sourceURL: sourceURL,
+                mimeType: nil
+            ),
+            startHandler: { [weak self] in
+                self?.enqueueDownload(
+                    sourceURL: sourceURL,
+                    originalURL: nil,
+                    suggestedFileName: nil,
+                    mimeType: nil,
+                    expectsVideo: true
                 )
                 return nil
             }
@@ -629,7 +657,8 @@ final class DownloadStore: NSObject {
         sourceURL: URL,
         originalURL: URL?,
         suggestedFileName: String?,
-        mimeType: String?
+        mimeType: String?,
+        expectsVideo: Bool = false
     ) {
         stateQueue.async {
             self.prepareStorageLocked()
@@ -649,6 +678,7 @@ final class DownloadStore: NSObject {
                 fileName: destinationURL.lastPathComponent,
                 destinationURL: destinationURL,
                 mimeType: mimeType,
+                expectsVideo: expectsVideo,
                 addedAt: Date(),
                 task: task
             )
@@ -1053,9 +1083,24 @@ final class DownloadStore: NSObject {
         lastProgressSample = ProgressSample(bytesWritten: totalBytesWritten, timestamp: now)
     }
     
-    private func completeDownload(taskIdentifier: Int, temporaryLocation: URL) {
+    private func completeDownload(taskIdentifier: Int, temporaryLocation: URL, response: URLResponse?) {
         guard let active = activeDownloads.removeValue(forKey: taskIdentifier) else {
             return
+        }
+
+        if active.expectsVideo {
+            let httpResponse = response as? HTTPURLResponse
+            let mimeType = response?.mimeType?.lowercased()
+            guard let statusCode = httpResponse?.statusCode,
+                  (200..<300).contains(statusCode),
+                  mimeType?.hasPrefix("video/") == true
+                    || mimeType == "application/mp4"
+                    || mimeType == "application/octet-stream" else {
+                try? fileManager.removeItem(at: temporaryLocation)
+                storePersistedEntryLocked(makePersistedEntry(for: active, state: .failed))
+                postDidChange()
+                return
+            }
         }
         
         prepareStorageLocked()
@@ -1172,7 +1217,11 @@ extension DownloadStore: URLSessionDownloadDelegate {
         didFinishDownloadingTo location: URL
     ) {
         stateQueue.sync {
-            self.completeDownload(taskIdentifier: downloadTask.taskIdentifier, temporaryLocation: location)
+            self.completeDownload(
+                taskIdentifier: downloadTask.taskIdentifier,
+                temporaryLocation: location,
+                response: downloadTask.response
+            )
         }
     }
     

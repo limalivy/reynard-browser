@@ -117,6 +117,17 @@ extension BrowserViewController: TabManagerDelegate {
         guard contentView.isDisplaying(session: session) else {
             return
         }
+
+        if element.type == .video,
+           let duration = element.videoDuration,
+           duration.isFinite,
+           duration > 10,
+           let source = element.videoSrcUri?.trimmingCharacters(in: .whitespacesAndNewlines),
+           let url = URL(string: source),
+           let download = DownloadStore.shared.pendingDownload(forVideoURL: url) {
+            contextMenuCoordinator.present(at: point, target: .video(download), allowsPreview: false)
+            return
+        }
         
         if element.type == .image,
            let source = element.srcUri?.trimmingCharacters(in: .whitespacesAndNewlines),

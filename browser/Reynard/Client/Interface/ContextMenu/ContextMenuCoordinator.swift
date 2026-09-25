@@ -17,6 +17,7 @@ protocol ContextMenuCoordinatorHost: AnyObject {
     func captureSourceTabThumbnail(completion: @escaping () -> Void)
     func contextMenuOpenLink(_ url: URL, disposition: TabOpenDisposition)
     func contextMenuPresentShareSheet(items: [Any], sourceView: UIView, sourceRect: CGRect)
+    func contextMenuDownloadVideo(_ download: DownloadStore.PendingDownload)
     func contextMenuRestoreInteraction(for session: GeckoSession)
 }
 
@@ -189,6 +190,16 @@ extension ContextMenuCoordinator: UIContextMenuInteractionDelegate {
         let newTabDisposition = Prefs.BrowsingSettings.openLinksInNewTabsBehavior == .openInBackground
         ? TabOpenDisposition.backgroundTab
         : .newTab
+
+        if case let .video(download) = context.target {
+            return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { _ in
+                UIMenu(title: "", children: [
+                    UIAction(title: NSLocalizedString("Download Video", comment: ""), image: UIImage(named: "reynard.square.and.arrow.down")) { [weak host] _ in
+                        host?.contextMenuDownloadVideo(download)
+                    },
+                ])
+            }
+        }
         
         if case let .image(url, _) = context.target,
            let imageConfiguration = ImagePreviewMenu.configuration(

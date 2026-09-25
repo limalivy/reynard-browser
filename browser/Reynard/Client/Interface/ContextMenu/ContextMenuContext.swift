@@ -11,6 +11,7 @@ struct ContextMenuContext {
     enum Target {
         case link(URL)
         case image(URL, linkURL: URL?)
+        case video(DownloadStore.PendingDownload)
     }
     
     let target: Target

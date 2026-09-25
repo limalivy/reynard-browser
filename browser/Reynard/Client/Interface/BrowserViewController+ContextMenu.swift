@@ -81,6 +81,10 @@ extension BrowserViewController: ContextMenuCoordinatorHost {
             sourceRect: sourceRect
         )
     }
+
+    func contextMenuDownloadVideo(_ download: DownloadStore.PendingDownload) {
+        downloadsCoordinator.enqueueConfirmation(download)
+    }
     
     func contextMenuRestoreInteraction(for session: GeckoSession) {
         contentView.restoreInteraction(for: session)
