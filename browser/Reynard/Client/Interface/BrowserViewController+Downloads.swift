@@ -5,6 +5,7 @@
 //  Created by Minh Ton on 16/6/26.
 //
 
+import GeckoView
 import UIKit
 
 extension BrowserViewController: DownloadsCoordinatorDelegate {
