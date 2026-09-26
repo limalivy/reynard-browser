@@ -11,12 +11,15 @@ struct VideoPipelineTests {
         let session = GeckoSession(root: fixture, temporary: outputRoot.appendingPathComponent("transport"))
         let cases: [(String, [String], Double, Bool, Bool)] = [
             ("direct", ["video-11s.mp4"], 11, false, true),
+            ("nine", ["video-9s.mp4"], 9, false, false),
+            ("ten", ["video-10s.mp4"], 10, false, false),
             ("blob", ["blob:https://fixture.invalid/object"], 11, false, true),
             ("ts", ["hls/ts/index.m3u8"], 11, false, true),
             ("fmp4", ["hls/fmp4/index.m3u8"], 11, false, true),
             ("range", ["hls/range/index.m3u8"], 11, false, true),
             ("aes", ["hls/aes/index.m3u8"], 11, false, true),
             ("audio", ["hls/master.m3u8"], 11, false, true),
+            ("discontinuity", ["hls/discontinuity.m3u8"], 12, false, true),
             ("sniff", ["hls/master.m3u8", "hls/fmp4/index.m3u8", "hls/audio/index.m3u8"], 11, true, true),
             ("ambiguous", ["hls/fmp4/index.m3u8", "hls/ts/index.m3u8"], 11, true, false),
             ("mismatch", ["hls/ts/index.m3u8"], 15, true, false),

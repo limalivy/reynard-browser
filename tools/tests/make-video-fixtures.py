@@ -45,6 +45,11 @@ ffmpeg(hls / "audio", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000
     '#EXT-X-STREAM-INF:BANDWIDTH=1000,AUDIO="audio"\nts/index.m3u8\n'
     '#EXT-X-STREAM-INF:BANDWIDTH=2000,AUDIO="audio"\nfmp4/index.m3u8\n'
 )
+(hls / "discontinuity.m3u8").write_text(
+    "#EXTM3U\n#EXT-X-TARGETDURATION:4\n#EXTINF:4,\nts/index0.ts\n"
+    "#EXT-X-DISCONTINUITY\n#EXTINF:4,\nts/index0.ts\n"
+    "#EXT-X-DISCONTINUITY\n#EXTINF:4,\nts/index0.ts\n#EXT-X-ENDLIST\n"
+)
 if not (root / "index.html").exists():
     (root / "index.html").write_text("<!doctype html><title>Not a video</title>")
 print(root)
