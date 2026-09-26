@@ -10,6 +10,7 @@ DERIVED_DATA="$DIST_DIR/simulator"
 APP_PATH="$DERIVED_DATA/Build/Products/Debug-iphonesimulator/Reynard.app"
 
 sh "$ROOT_DIR/tools/development/build-media.sh" --simulator
+sh "$ROOT_DIR/tools/development/prepare-player.sh" --simulator
 
 mkdir -p "$DIST_DIR"
 cp "$ROOT_DIR/browser/Configuration/Reynard.xcconfig" "$BUILD_XCCONFIG_PATH"

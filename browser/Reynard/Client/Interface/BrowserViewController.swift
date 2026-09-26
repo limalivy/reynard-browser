@@ -812,6 +812,12 @@ final class BrowserViewController: UIViewController, GeckoScreenOrientationDeleg
     private func observeNotifications() {
         NotificationCenter.default.addObserver(
             self,
+            selector: #selector(pauseWebVideoForLocalPlayback),
+            name: .localVideoPlaybackWillStart,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
             selector: #selector(setNeedsStatusBarAppearanceUpdate),
             name: .homepageSettingsDidChange,
             object: nil

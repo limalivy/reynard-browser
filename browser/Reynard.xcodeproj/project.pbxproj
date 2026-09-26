@@ -548,7 +548,10 @@
 					"-lgkcodecs",
 					"-lmozinference",
 					"-Wl,-hidden-lidevice_ffi",
+					"-framework",
+					MobileVLCKit,
 				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -Xfrontend -disable-autolink-framework -Xfrontend MobileVLCKit";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.minh-ton.Reynard";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -621,7 +624,10 @@
 					"-lgkcodecs",
 					"-lmozinference",
 					"-Wl,-hidden-lidevice_ffi",
+					"-framework",
+					MobileVLCKit,
 				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -Xfrontend -disable-autolink-framework -Xfrontend MobileVLCKit";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.minh-ton.Reynard";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

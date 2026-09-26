@@ -38,3 +38,8 @@ echo "resource default-theme file:default-theme/" >> "${GECKOVIEW_FW_FRAMEWORKS}
 
 # sign the GeckoView.framework
 codesign --force --sign "${SIGN_IDENTITY}" "${GECKOVIEW_FW}"
+
+# The compatible player stays in its own dylib, separate from Gecko/FFmpeg.
+PLAYER_FRAMEWORK="${SRCROOT}/../support/vlckit/build/${PLATFORM_NAME}/MobileVLCKit.framework"
+ditto "${PLAYER_FRAMEWORK}" "${FRAMEWORKS_DIR}/MobileVLCKit.framework"
+codesign --force --sign "${SIGN_IDENTITY}" "${FRAMEWORKS_DIR}/MobileVLCKit.framework"

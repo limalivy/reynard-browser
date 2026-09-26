@@ -186,6 +186,18 @@ jobs:
           swiftc browser/Reynard/Client/Stores/HLSPlaylist.swift tools/tests/HLSPlaylistTests.swift -o "$RUNNER_TEMP/hls-tests"
           "$RUNNER_TEMP/hls-tests"
 
+      - name: Restore compatible player cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            support/vlckit/archives
+            support/vlckit/source
+            support/vlckit/build
+          key: player-${{ matrix.variant }}-${{ hashFiles('tools/development/prepare-player.sh') }}
+
+      - name: Prepare compatible video player
+        run: sh tools/development/prepare-player.sh ${{ matrix.variant == 'simulator' && '--simulator' || '' }}
+
       - name: Build Gecko
         id: gecko
         shell: bash

@@ -564,6 +564,10 @@ final class DownloadsViewController: UIViewController, UITableViewDataSource, UI
     // MARK: - File Opening
     
     private func openDownload(_ item: DownloadItemSnapshot, from indexPath: IndexPath) {
+        if let fileURL = item.fileURL, isVideoDownload(item) {
+            present(VideoPlayerViewController(fileURL: fileURL), animated: true)
+            return
+        }
         if isHTMLDownload(item) {
             guard let fileURL = item.fileURL else {
                 return
@@ -579,6 +583,13 @@ final class DownloadsViewController: UIViewController, UITableViewDataSource, UI
         }
         
         shareDownload(item, from: indexPath)
+    }
+
+    private func isVideoDownload(_ item: DownloadItemSnapshot) -> Bool {
+        if item.mimeType?.lowercased().hasPrefix("video/") == true { return true }
+        let suffix = (item.fileURL?.pathExtension ?? URL(fileURLWithPath: item.fileName).pathExtension).lowercased()
+        return ["mp4", "m4v", "mov", "mkv", "webm", "avi", "ts", "mts", "m2ts",
+                "mpg", "mpeg", "3gp", "ogv", "flv", "wmv", "m3u8"].contains(suffix)
     }
     
     private func isHTMLDownload(_ item: DownloadItemSnapshot) -> Bool {

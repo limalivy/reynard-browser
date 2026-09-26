@@ -10,6 +10,7 @@ XCCONFIG_PATH="$ROOT_DIR/browser/Configuration/Reynard.xcconfig"
 BUILD_XCCONFIG_PATH="$DIST_DIR/Reynard.xcconfig"
 
 sh "$ROOT_DIR/tools/development/build-media.sh"
+sh "$ROOT_DIR/tools/development/prepare-player.sh"
 
 NO_SIGNING=false
 NIGHTLY=false

@@ -18,6 +18,7 @@ extension Notification.Name {
     static let bookmarkStoreDidChange = Notification.Name("BookmarkStore.DidChange")
     static let downloadStoreDidChange = Notification.Name("DownloadStore.DidChange")
     static let downloadStoreDidStartDownload = Notification.Name("DownloadStore.DidStartDownload")
+    static let localVideoPlaybackWillStart = Notification.Name("Media.LocalVideoPlaybackWillStart")
     static let historyStoreDidChange = Notification.Name("HistoryStore.DidChange")
     static let geckoRuntimeChildProcessDidStart = Notification.Name("GeckoRuntime.ChildProcessDidStart")
     static let jitEndpointMonitorDidFail = Notification.Name("JIT.EndpointMonitorDidFail")

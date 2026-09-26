@@ -8,6 +8,10 @@
 import UIKit
 
 extension BrowserViewController: DownloadsCoordinatorDelegate {
+    @objc func pauseWebVideoForLocalPlayback() {
+        tabManager.selectedTab?.session.mediaSession.pause()
+    }
+
     var downloadsShouldRefreshLayoutForStoreChange: Bool {
         return !sidebarCoordinator.hostsSidebar
         && browserLayout.interfaceIdiom == .pad

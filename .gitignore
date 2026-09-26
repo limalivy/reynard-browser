@@ -22,3 +22,6 @@ browser/Reynard/JIT/RPPairing/libidevice_ffi.a
 support/media/archives/
 support/media/source/
 support/media/build/
+support/vlckit/archives/
+support/vlckit/source/
+support/vlckit/build/

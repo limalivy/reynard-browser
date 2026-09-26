@@ -12,6 +12,6 @@ GECKO_DIST = $(SRCROOT)/../engine/firefox/obj-aarch64-apple-ios/dist
 
 HEADER_SEARCH_PATHS = $(inherited) $(GECKO_DIST)/include $(GECKO_DIST)/include/GeckoView $(SRCROOT)/GeckoView $(SRCROOT)/../support/media/build/$(PLATFORM_NAME)/include $(SRCROOT)/Reynard/Bridging
 LIBRARY_SEARCH_PATHS = $(inherited) $(GECKO_DIST)/bin $(SRCROOT)/../support/media/build/$(PLATFORM_NAME)/lib
-FRAMEWORK_SEARCH_PATHS = $(inherited) $(BUILT_PRODUCTS_DIR)
+FRAMEWORK_SEARCH_PATHS = $(inherited) $(BUILT_PRODUCTS_DIR) $(SRCROOT)/../support/vlckit/build/$(PLATFORM_NAME)
 LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks @loader_path/Frameworks
 SWIFT_OBJC_BRIDGING_HEADER = $(SRCROOT)/Reynard/Bridging/Reynard-Bridging-Header.h
