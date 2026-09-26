@@ -14,6 +14,9 @@ FAST_BUILD=false
 
 for arg in "$@"; do
 	case "$arg" in
+		--simulator)
+			TARGET="aarch64-apple-ios-sim"
+			;;
 		--use-sccache)
 			USE_SCCACHE=true
 			;;

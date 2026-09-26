@@ -19,3 +19,4 @@ jobs:
       build_trollstore_tipa: false
       build_jailbroken_ipa: false
       fast_build: true
+      build_simulator: true

@@ -32,6 +32,11 @@ on:
         required: false
         default: false
         type: boolean
+      build_simulator:
+        description: Build an arm64 iOS Simulator app
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -52,6 +57,7 @@ jobs:
           BUILD_NORMAL_IPA: ${{ inputs.build_normal_ipa }}
           BUILD_TROLLSTORE_TIPA: ${{ inputs.build_trollstore_tipa }}
           BUILD_JAILBROKEN_IPA: ${{ inputs.build_jailbroken_ipa }}
+          BUILD_SIMULATOR: ${{ inputs.build_simulator }}
         with:
           script: |
             const variants = [];
@@ -77,13 +83,21 @@ jobs:
               });
             }
 
+            if (process.env.BUILD_SIMULATOR === 'true') {
+              variants.push({
+                variant: 'simulator',
+                build_args: '--simulator --use-sccache --auto-clobber',
+                sccache_namespace: 'simulator',
+              });
+            }
+
             core.setOutput('matrix', JSON.stringify({ include: variants }));
             core.setOutput('should_build', String(variants.length > 0));
 
   build:
     needs: prepare
     if: ${{ needs.prepare.outputs.should_build == 'true' }}
-    name: "${{ matrix.variant == 'standard' && 'Build Standard / TrollStore' || 'Build Jailbroken' }}"
+    name: "${{ matrix.variant == 'simulator' && 'Build Simulator' || (matrix.variant == 'standard' && 'Build Standard / TrollStore' || 'Build Jailbroken') }}"
     runs-on: macos-26
     strategy:
       fail-fast: false
@@ -127,7 +141,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-ios
+          targets: ${{ matrix.variant == 'simulator' && 'aarch64-apple-ios-sim' || 'aarch64-apple-ios' }}
 
       - name: Hash Rust toolchain for cache
         id: rust_toolchain
@@ -150,9 +164,9 @@ jobs:
           path: |
             support/idevice/target
             browser/Reynard/JIT/RPPairing/libidevice_ffi.a
-          key: buildcache-idevice-${{ steps.rust_toolchain.outputs.hash }}-${{ hashFiles('support/idevice/Cargo.lock', 'support/idevice/Cargo.toml', 'tools/development/build-idevice.sh') }}
+          key: buildcache-idevice-${{ matrix.variant }}-${{ steps.rust_toolchain.outputs.hash }}-${{ hashFiles('support/idevice/Cargo.lock', 'support/idevice/Cargo.toml', 'tools/development/build-idevice.sh') }}
           restore-keys: |
-            buildcache-idevice-${{ steps.rust_toolchain.outputs.hash }}-
+            buildcache-idevice-${{ matrix.variant }}-${{ steps.rust_toolchain.outputs.hash }}-
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@v0.0.11
@@ -180,13 +194,27 @@ jobs:
               print(f'::error title=Gecko build::{escaped}')
 
       - name: Build idevice support library
-        run: ./tools/development/build-idevice.sh
+        run: ./tools/development/build-idevice.sh ${{ matrix.variant == 'simulator' && '--simulator' || '' }}
 
       - name: Install packaging dependencies
+        if: ${{ matrix.variant != 'simulator' }}
         run: brew install ldid
 
       - name: Build app
+        if: ${{ matrix.variant != 'simulator' }}
         run: ./tools/release/build-app.sh --no-signing ${{ inputs.nightly && '--nightly' || '' }}
+
+      - name: Build simulator app
+        if: ${{ matrix.variant == 'simulator' }}
+        run: ./tools/development/build-simulator.sh
+
+      - name: Upload simulator app
+        if: ${{ matrix.variant == 'simulator' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Reynard-Simulator
+          path: dist/Reynard-Simulator.zip
+          if-no-files-found: error
 
       - name: Create IPA
         if: ${{ matrix.variant == 'standard' && inputs.build_normal_ipa }}

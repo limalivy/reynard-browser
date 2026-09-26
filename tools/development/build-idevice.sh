@@ -19,6 +19,13 @@ fi
 RUST_TARGET="aarch64-apple-ios"
 DEPLOYMENT_FLAG="-miphoneos-version-min=${DEPLOYMENT_TARGET}"
 
+for arg in "$@"; do
+  if [ "$arg" = "--simulator" ]; then
+    RUST_TARGET="aarch64-apple-ios-sim"
+    DEPLOYMENT_FLAG="-mios-simulator-version-min=${DEPLOYMENT_TARGET}"
+  fi
+done
+
 if ! rustup target list | grep -q "^$RUST_TARGET (installed)"; then
 	rustup target add "$RUST_TARGET"
 fi
