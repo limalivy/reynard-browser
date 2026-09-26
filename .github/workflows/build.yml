@@ -205,8 +205,23 @@ jobs:
         run: ./tools/release/build-app.sh --no-signing ${{ inputs.nightly && '--nightly' || '' }}
 
       - name: Build simulator app
+        id: simulator_app
         if: ${{ matrix.variant == 'simulator' }}
-        run: ./tools/development/build-simulator.sh
+        shell: bash
+        run: ./tools/development/build-simulator.sh 2>&1 | tee "$RUNNER_TEMP/simulator-build.log"
+
+      - name: Report simulator app build errors
+        if: ${{ failure() && steps.simulator_app.outcome == 'failure' }}
+        shell: python
+        run: |
+          import os
+          from pathlib import Path
+
+          log = Path(os.environ['RUNNER_TEMP']) / 'simulator-build.log'
+          errors = [line for line in log.read_text(errors='replace').splitlines() if 'error:' in line.lower()]
+          for line in errors[-10:]:
+              escaped = line.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print(f'::error title=Simulator app build::{escaped}')
 
       - name: Upload simulator app
         if: ${{ matrix.variant == 'simulator' }}
