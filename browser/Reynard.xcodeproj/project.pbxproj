@@ -534,6 +534,9 @@
 				MARKETING_VERSION = "$(CURRENT_VERSION)";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
+					"-Wl,-hidden-lavformat",
+					"-Wl,-hidden-lavcodec",
+					"-Wl,-hidden-lavutil",
 					"$(GECKO_DIST)/bin/XUL",
 					"-lmozglue",
 					"-lnss3",
@@ -545,9 +548,6 @@
 					"-lgkcodecs",
 					"-lmozinference",
 					"-Wl,-hidden-lidevice_ffi",
-					"-Wl,-hidden-lavformat",
-					"-Wl,-hidden-lavcodec",
-					"-Wl,-hidden-lavutil",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.minh-ton.Reynard";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -607,6 +607,9 @@
 				MARKETING_VERSION = "$(CURRENT_VERSION)";
 				OTHER_LDFLAGS = (
 					"$(inherited)",
+					"-Wl,-hidden-lavformat",
+					"-Wl,-hidden-lavcodec",
+					"-Wl,-hidden-lavutil",
 					"$(GECKO_DIST)/bin/XUL",
 					"-lmozglue",
 					"-lnss3",
@@ -618,9 +621,6 @@
 					"-lgkcodecs",
 					"-lmozinference",
 					"-Wl,-hidden-lidevice_ffi",
-					"-Wl,-hidden-lavformat",
-					"-Wl,-hidden-lavcodec",
-					"-Wl,-hidden-lavutil",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.minh-ton.Reynard";
 				PRODUCT_NAME = "$(TARGET_NAME)";

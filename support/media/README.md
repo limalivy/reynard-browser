@@ -20,6 +20,13 @@ The complete application source, bridge, build flags and linking configuration
 are in this repository. `support/media/build/<SDK>/lib` contains the static
 libraries and `objects` contains their intermediate build objects.
 
+The private FFmpeg archives must precede XUL and Gecko's mozav libraries in the
+app's linker flags. Gecko exports some of the same FFmpeg symbols; resolving an
+internal static reference against its dylibs can cause ARM64 relocation errors
+or mix incompatible library versions. `tools/tests/test-media-link.py` tests the
+actual Debug and Release flag order against Gecko and rejects imported media
+symbols in the remux bridge.
+
 Current scope: finite HLS, highest bandwidth variant, default external audio,
 MPEG-TS/fMP4, byte ranges and ordinary AES-128 identity keys. Live playlists,
 SAMPLE-AES/DRM and DASH reconstruction are rejected. Resource discovery does not

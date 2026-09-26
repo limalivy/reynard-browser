@@ -211,6 +211,9 @@ jobs:
       - name: Build idevice support library
         run: ./tools/development/build-idevice.sh ${{ matrix.variant == 'simulator' && '--simulator' || '' }}
 
+      - name: Verify media linking with Gecko
+        run: python3 tools/tests/test-media-link.py ${{ matrix.variant == 'simulator' && 'iphonesimulator engine/firefox/obj-aarch64-apple-ios-sim/dist/bin' || 'iphoneos engine/firefox/obj-aarch64-apple-ios/dist/bin' }}
+
       - name: Install packaging dependencies
         if: ${{ matrix.variant != 'simulator' }}
         run: brew install ldid
@@ -233,7 +236,7 @@ jobs:
           from pathlib import Path
 
           log = Path(os.environ['RUNNER_TEMP']) / 'simulator-build.log'
-          errors = [line for line in log.read_text(errors='replace').splitlines() if 'error:' in line.lower()]
+          errors = [line for line in log.read_text(errors='replace').splitlines() if 'error:' in line.lower() or 'ld:' in line.lower()]
           for line in errors[-10:]:
               escaped = line.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
               print(f'::error title=Simulator app build::{escaped}')
