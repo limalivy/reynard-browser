@@ -171,6 +171,21 @@ jobs:
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@v0.0.11
 
+      - name: Restore media library cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            support/media/archives
+            support/media/source
+            support/media/build
+          key: media-xcode26.6-${{ matrix.variant }}-${{ hashFiles('tools/development/build-media.sh') }}
+
+      - name: Build and test video components
+        run: |
+          sh tools/development/build-media.sh ${{ matrix.variant == 'simulator' && '--simulator' || '' }}
+          swiftc browser/Reynard/Client/Stores/HLSPlaylist.swift tools/tests/HLSPlaylistTests.swift -o "$RUNNER_TEMP/hls-tests"
+          "$RUNNER_TEMP/hls-tests"
+
       - name: Build Gecko
         id: gecko
         shell: bash

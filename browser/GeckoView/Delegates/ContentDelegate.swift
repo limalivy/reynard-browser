@@ -26,6 +26,9 @@ public struct ContextElement {
     public let srcUri: String?
     public let videoSrcUri: String?
     public let videoDuration: Double?
+    public let videoSources: [String]
+    public let videoSourceIsFallback: Bool
+    public let videoDownloadContext: VideoDownloadContext?
     public let textContent: String?
     public let isMouseInput: Bool
 }
@@ -233,6 +236,9 @@ func newContentHandler(_ session: GeckoSession) -> GeckoSessionHandler {
                 srcUri: message?["elementSrc"] as? String,
                 videoSrcUri: message?["videoSrc"] as? String,
                 videoDuration: PayloadValue.double(message?["videoDuration"]),
+                videoSources: message?["videoSources"] as? [String] ?? [],
+                videoSourceIsFallback: message?["videoSourceIsFallback"] as? Bool ?? false,
+                videoDownloadContext: VideoDownloadContext(payload: message?["videoContext"] as? [String: Any]),
                 textContent: message?["textContent"] as? String,
                 isMouseInput: message?["isMouseInput"] as? Bool ?? false
             )

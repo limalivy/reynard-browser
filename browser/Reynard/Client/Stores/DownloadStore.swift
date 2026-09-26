@@ -107,7 +107,6 @@ final class DownloadStore: NSObject {
         let fileName: String
         let destinationURL: URL
         let mimeType: String?
-        let expectsVideo: Bool
         let addedAt: Date
         let task: URLSessionDownloadTask
         var expectedBytes: Int64?
@@ -123,7 +122,6 @@ final class DownloadStore: NSObject {
             fileName: String,
             destinationURL: URL,
             mimeType: String?,
-            expectsVideo: Bool,
             addedAt: Date,
             task: URLSessionDownloadTask
         ) {
@@ -133,7 +131,6 @@ final class DownloadStore: NSObject {
             self.fileName = fileName
             self.destinationURL = destinationURL
             self.mimeType = mimeType
-            self.expectsVideo = expectsVideo
             self.addedAt = addedAt
             self.task = task
             self.expectedBytes = nil
@@ -147,6 +144,7 @@ final class DownloadStore: NSObject {
         let cancel: () -> Void
         let pause: () -> Void
         let resume: () -> Void
+        var canPause = true
     }
     
     private final class CapturedDownload {
@@ -307,29 +305,38 @@ final class DownloadStore: NSObject {
         )
     }
 
-    func pendingDownload(forVideoURL sourceURL: URL) -> PendingDownload? {
-        guard URLUtils.isWebURL(sourceURL),
-              !["m3u8", "mpd"].contains(sourceURL.pathExtension.lowercased()) else {
+    @MainActor
+    func pendingDownload(forVideo element: ContextElement, session: GeckoSession) -> PendingDownload? {
+        guard let context = element.videoDownloadContext,
+              let duration = element.videoDuration, duration.isFinite, duration > 10 else { return nil }
+        let sources = element.videoSources.compactMap { URL(string: $0) }.filter {
+            URLUtils.isWebURL($0) || $0.scheme?.lowercased() == "blob"
+        }
+        guard let sourceURL = sources.first else { return nil }
+        let isPlaylist = element.videoSourceIsFallback || sourceURL.pathExtension.lowercased() == "m3u8"
+        var name = sanitizedFileName(suggestedFileName: sourceURL.scheme == "blob" ? "Video.mp4" : nil, sourceURL: sourceURL)
+        if isPlaylist || URL(fileURLWithPath: name).pathExtension.isEmpty {
+            name = URL(fileURLWithPath: name).deletingPathExtension().lastPathComponent + ".mp4"
+        }
+        let fileName = name
+        return PendingDownload(fileName: fileName) { [weak self] in
+            guard let self else { return nil }
+            let directory = fileManager.temporaryDirectory.appendingPathComponent("Video-\(UUID().uuidString)", isDirectory: true)
+            let output = directory.appendingPathComponent(fileName)
+            let job = VideoDownloadTask(session: session, context: context, sources: sources,
+                                        duration: duration, isFallback: element.videoSourceIsFallback)
+            beginCapturedDownload(localFilePath: output.path, sourceURL: sourceURL, fileName: fileName,
+                                  mimeType: isPlaylist ? "video/mp4" : nil, expectedBytes: nil,
+                                  controls: CapturedDownloadControls(cancel: { Task { @MainActor in job.cancel() } },
+                                                                     pause: {}, resume: {}, canPause: false),
+                                  originatingSession: session)
+            job.start(output: output, progress: { [weak self] bytes in
+                _ = self?.updateCapturedDownload(localFilePath: output.path, bytesReceived: bytes)
+            }, completion: { [weak self] succeeded in
+                self?.completeCapturedDownload(localFilePath: output.path, succeeded: succeeded)
+            })
             return nil
         }
-
-        return PendingDownload(
-            fileName: resolvedFileName(
-                suggestedFileName: nil,
-                sourceURL: sourceURL,
-                mimeType: nil
-            ),
-            startHandler: { [weak self] in
-                self?.enqueueDownload(
-                    sourceURL: sourceURL,
-                    originalURL: nil,
-                    suggestedFileName: nil,
-                    mimeType: nil,
-                    expectsVideo: true
-                )
-                return nil
-            }
-        )
     }
     
     func pendingDownload(from options: [String: Any?]) -> PendingDownload? {
@@ -445,6 +452,7 @@ final class DownloadStore: NSObject {
             
             guard let captured = self.capturedDownloads.values.first(where: { $0.id == id }),
                   let controls = captured.controls,
+                  controls.canPause,
                   !captured.isPaused else {
                 return
             }
@@ -657,8 +665,7 @@ final class DownloadStore: NSObject {
         sourceURL: URL,
         originalURL: URL?,
         suggestedFileName: String?,
-        mimeType: String?,
-        expectsVideo: Bool = false
+        mimeType: String?
     ) {
         stateQueue.async {
             self.prepareStorageLocked()
@@ -678,7 +685,6 @@ final class DownloadStore: NSObject {
                 fileName: destinationURL.lastPathComponent,
                 destinationURL: destinationURL,
                 mimeType: mimeType,
-                expectsVideo: expectsVideo,
                 addedAt: Date(),
                 task: task
             )
@@ -718,7 +724,7 @@ final class DownloadStore: NSObject {
         
         let capturedItems = capturedDownloads.values
             .map { active in
-                let canPause = active.controls != nil
+                let canPause = active.controls?.canPause ?? false
                 return DownloadItemSnapshot(
                     id: active.id,
                     fileName: active.fileName,
@@ -1088,21 +1094,6 @@ final class DownloadStore: NSObject {
             return
         }
 
-        if active.expectsVideo {
-            let httpResponse = response as? HTTPURLResponse
-            let mimeType = response?.mimeType?.lowercased()
-            guard let statusCode = httpResponse?.statusCode,
-                  (200..<300).contains(statusCode),
-                  mimeType?.hasPrefix("video/") == true
-                    || mimeType == "application/mp4"
-                    || mimeType == "application/octet-stream" else {
-                try? fileManager.removeItem(at: temporaryLocation)
-                storePersistedEntryLocked(makePersistedEntry(for: active, state: .failed))
-                postDidChange()
-                return
-            }
-        }
-        
         prepareStorageLocked()
         
         do {

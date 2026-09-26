@@ -19,3 +19,6 @@ research/
 # Build artifacts
 dist/
 browser/Reynard/JIT/RPPairing/libidevice_ffi.a
+support/media/archives/
+support/media/source/
+support/media/build/

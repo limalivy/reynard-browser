@@ -13,6 +13,7 @@
 #import "JITEnabler.h"
 #import "UIKit+Private.h"
 #import "Utils.h"
+#import "VideoRemux.h"
 #import <GeckoView/GeckoViewSwiftSupport.h>
 #import <GeckoView/IOSBootstrap.h>
 

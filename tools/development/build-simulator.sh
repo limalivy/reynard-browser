@@ -9,6 +9,8 @@ BUILD_XCCONFIG_PATH="$DIST_DIR/Reynard-Simulator.xcconfig"
 DERIVED_DATA="$DIST_DIR/simulator"
 APP_PATH="$DERIVED_DATA/Build/Products/Debug-iphonesimulator/Reynard.app"
 
+sh "$ROOT_DIR/tools/development/build-media.sh" --simulator
+
 mkdir -p "$DIST_DIR"
 cp "$ROOT_DIR/browser/Configuration/Reynard.xcconfig" "$BUILD_XCCONFIG_PATH"
 BUILD_SHA="$(git -C "$ROOT_DIR" rev-parse --short HEAD)"

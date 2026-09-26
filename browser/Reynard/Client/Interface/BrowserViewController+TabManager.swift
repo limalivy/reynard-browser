@@ -122,9 +122,7 @@ extension BrowserViewController: TabManagerDelegate {
            let duration = element.videoDuration,
            duration.isFinite,
            duration > 10,
-           let source = element.videoSrcUri?.trimmingCharacters(in: .whitespacesAndNewlines),
-           let url = URL(string: source),
-           let download = DownloadStore.shared.pendingDownload(forVideoURL: url) {
+           let download = DownloadStore.shared.pendingDownload(forVideo: element, session: session) {
             contextMenuCoordinator.present(at: point, target: .video(download), allowsPreview: false)
             return
         }

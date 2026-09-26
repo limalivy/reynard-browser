@@ -1,16 +1,108 @@
 diff --git a/mobile/shared/modules/geckoview/GeckoViewContent.sys.mjs b/mobile/shared/modules/geckoview/GeckoViewContent.sys.mjs
-index 635806ea1724..5e035fd94e13 100644
+index 635806ea17..843b16a8b2 100644
 --- a/mobile/shared/modules/geckoview/GeckoViewContent.sys.mjs
 +++ b/mobile/shared/modules/geckoview/GeckoViewContent.sys.mjs
-@@ -3,6 +3,7 @@
+@@ -3,16 +3,108 @@
   * You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  import { GeckoViewModule } from "resource://gre/modules/GeckoViewModule.sys.mjs";
 +import { gAutofillManager } from "resource://gre/modules/GeckoViewAutofill.sys.mjs";
  
  export class GeckoViewContent extends GeckoViewModule {
++  #videoDownloads = new Map();
++
++  async #fetchVideoResource(data) {
++    const { Downloads } = ChromeUtils.importESModule("resource://gre/modules/Downloads.sys.mjs");
++    const { E10SUtils } = ChromeUtils.importESModule("resource://gre/modules/E10SUtils.sys.mjs");
++    let job = this.#videoDownloads.get(data.jobId);
++    if (!job) {
++      const global = WindowGlobalParent.getByInnerWindowId(data.context.innerWindowId);
++      if (!global || global.browsingContext.top !== this.browser.browsingContext) {
++        throw new Error("The video document is no longer available");
++      }
++      job = {
++        principal: global.documentPrincipal,
++        cookieJarSettings: global.cookieJarSettings,
++        referrerInfo: E10SUtils.deserializeReferrerInfo(data.context.referrerInfo),
++        userAgent: data.context.userAgent,
++        directory: PathUtils.join(PathUtils.tempDir, `reynard-video-${Services.uuid.generateUUID()}`),
++        index: 0,
++        cancelled: false,
++      };
++      job.ready = IOUtils.makeDirectory(job.directory);
++      this.#videoDownloads.set(data.jobId, job);
++      await job.ready;
++    }
++    if (job.cancelled || job.current) throw new Error("Video request is not available");
++    const uri = Services.io.newURI(data.url);
++    if (!["http", "https", "blob"].includes(uri.scheme)) throw new Error("Unsupported media URL");
++    const path = PathUtils.join(job.directory, String(job.index++));
++    let finalURL = data.url;
++    const download = await Downloads.createDownload({
++      source: {
++        url: data.url,
++        loadingPrincipal: job.principal,
++        cookieJarSettings: job.cookieJarSettings,
++        referrerInfo: job.referrerInfo,
++        isPrivate: job.principal.originAttributes.privateBrowsingId > 0,
++        allowHttpStatus: (_download, status) => data.range ? status === 206 : status >= 200 && status < 300,
++        adjustChannel(channel) {
++          if (!(channel instanceof Ci.nsIHttpChannel)) return;
++          channel.setRequestHeader("User-Agent", job.userAgent, false);
++          if (data.range) channel.setRequestHeader("Range", data.range, false);
++          const original = channel.notificationCallbacks;
++          channel.notificationCallbacks = {
++            QueryInterface: ChromeUtils.generateQI(["nsIInterfaceRequestor", "nsIChannelEventSink"]),
++            getInterface(iid) {
++              if (iid.equals(Ci.nsIChannelEventSink)) return this;
++              return original.getInterface(iid);
++            },
++            asyncOnChannelRedirect(oldChannel, newChannel, flags, callback) {
++              if (!newChannel.URI.schemeIs("http") && !newChannel.URI.schemeIs("https")) {
++                callback.onRedirectVerifyCallback(Cr.NS_ERROR_ABORT);
++                return;
++              }
++              finalURL = newChannel.URI.spec;
++              let sink;
++              try { sink = original.getInterface(Ci.nsIChannelEventSink); } catch {}
++              if (sink) sink.asyncOnChannelRedirect(oldChannel, newChannel, flags, callback);
++              else callback.onRedirectVerifyCallback(Cr.NS_OK);
++            },
++          };
++        },
++      },
++      target: path,
++    });
++    job.current = download;
++    download.onchange = () => {
++      if (data.maxBytes > 0 && download.currentBytes > data.maxBytes) download.cancel();
++    };
++    try {
++      if (job.cancelled) throw new Error("Video download cancelled");
++      await download.start();
++      return { path, url: finalURL, contentType: download.contentType, bytes: download.currentBytes };
++    } finally {
++      job.current = null;
++    }
++  }
++
++  async #finishVideoDownload(jobId) {
++    const job = this.#videoDownloads.get(jobId);
++    if (!job) return;
++    job.cancelled = true;
++    await job.ready;
++    await job.current?.cancel();
++    await IOUtils.remove(job.directory, { recursive: true, ignoreAbsent: true });
++    this.#videoDownloads.delete(jobId);
++  }
++
    onInit() {
-@@ -13,6 +14,8 @@ export class GeckoViewContent extends GeckoViewModule {
+     this.registerListener([
++      "GeckoView:FetchVideoResource",
++      "GeckoView:FinishVideoDownload",
+       "GeckoViewContent:ExitFullScreen",
+       "GeckoView:ClearMatches",
+       "GeckoView:DisplayMatches",
        "GeckoView:FindInPage",
        "GeckoView:RestoreState",
        "GeckoView:ContainsFormData",
@@ -19,7 +111,34 @@ index 635806ea1724..5e035fd94e13 100644
        "GeckoView:ProcessBackPressed",
        "GeckoView:ScrollBy",
        "GeckoView:ScrollTo",
-@@ -277,6 +280,12 @@ export class GeckoViewContent extends GeckoViewModule {
+@@ -58,6 +150,7 @@ export class GeckoViewContent extends GeckoViewModule {
+   }
+ 
+   onDisable() {
++    for (const jobId of this.#videoDownloads.keys()) this.#finishVideoDownload(jobId);
+     this.window.removeEventListener(
+       "MozDOMFullscreen:Entered",
+       this,
+@@ -174,6 +267,18 @@ export class GeckoViewContent extends GeckoViewModule {
+     debug`onEvent: event=${aEvent}, data=${aData}`;
+ 
+     switch (aEvent) {
++      case "GeckoView:FetchVideoResource":
++        this.#fetchVideoResource(aData).then(
++          result => aCallback.onSuccess(result),
++          error => aCallback.onError(String(error))
++        );
++        break;
++      case "GeckoView:FinishVideoDownload":
++        this.#finishVideoDownload(aData.jobId).then(
++          () => aCallback?.onSuccess(null),
++          error => aCallback?.onError(String(error))
++        );
++        break;
+       case "GeckoViewContent:ExitFullScreen":
+         this.browser.ownerDocument.exitFullscreen();
+         break;
+@@ -277,6 +382,12 @@ export class GeckoViewContent extends GeckoViewModule {
        case "GeckoView:GetBrokenSiteReport":
          this._getBrokenSiteReport(aCallback);
          break;
@@ -32,7 +151,7 @@ index 635806ea1724..5e035fd94e13 100644
        case "GeckoView:GetWebCompatInfo":
          this._getWebCompatInfo(aCallback);
          break;
-@@ -491,6 +500,41 @@ export class GeckoViewContent extends GeckoViewModule {
+@@ -491,6 +602,41 @@ export class GeckoViewContent extends GeckoViewModule {
      aCallback.onSuccess(await this.actor.containsFormData());
    }
  

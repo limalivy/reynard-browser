@@ -1,8 +1,80 @@
 diff --git a/mobile/shared/actors/ContentDelegateChild.sys.mjs b/mobile/shared/actors/ContentDelegateChild.sys.mjs
-index 2bf88b9e9e..3c60527f77 100644
+index 2bf88b9e9e..7d1719fa0d 100644
 --- a/mobile/shared/actors/ContentDelegateChild.sys.mjs
 +++ b/mobile/shared/actors/ContentDelegateChild.sys.mjs
-@@ -166,6 +166,19 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+@@ -8,6 +8,7 @@ const lazy = {};
+ 
+ ChromeUtils.defineESModuleGetters(lazy, {
+   ManifestObtainer: "moz-src:///dom/manifest/ManifestObtainer.sys.mjs",
++  E10SUtils: "resource://gre/modules/E10SUtils.sys.mjs",
+   SelectionUtils: "resource://gre/modules/SelectionUtils.sys.mjs",
+   SpellCheckHelper: "resource://gre/modules/InlineSpellChecker.sys.mjs",
+ });
+@@ -15,6 +16,63 @@ ChromeUtils.defineESModuleGetters(lazy, {
+ const MAX_TEXT_LENGTH = 4096;
+ 
+ export class ContentDelegateChild extends GeckoViewActorChild {
++  #mediaResources = new Map();
++  #mediaObserver = null;
++
++  #rememberMedia(entries) {
++    for (const entry of entries) {
++      if (!/^https?:\/\//i.test(entry.name)) {
++        continue;
++      }
++      const path = new URL(entry.name).pathname;
++      if (
++        /\.m3u8$/i.test(path) ||
++        /^(?:application|audio)\/(?:vnd\.apple\.mpegurl|x-mpegurl|mpegurl)$/i.test(
++          entry.contentType || ""
++        )
++      ) {
++        this.#mediaResources.set(entry.name, entry.startTime);
++        if (this.#mediaResources.size > 64) {
++          this.#mediaResources.delete(this.#mediaResources.keys().next().value);
++        }
++      }
++    }
++  }
++
++  #videoSources(video) {
++    const source = video?.currentSrc;
++    if (!source || video.mediaKeys) {
++      return { sources: [], fallback: false };
++    }
++    if (/^https?:\/\//i.test(source) ||
++        (source.startsWith("blob:") && URL.isBoundToBlob(source))) {
++      return { sources: [source], fallback: false };
++    }
++    if (!source.startsWith("blob:")) {
++      return { sources: [], fallback: false };
++    }
++    // A frame-wide request cannot identify which of several players owns it.
++    // Include shadow trees when counting players, and never guess across frames.
++    const videos = [];
++    const visit = root => {
++      for (const element of root.querySelectorAll("*")) {
++        if (element.localName === "video") videos.push(element);
++        if (element.shadowRoot) visit(element.shadowRoot);
++      }
++    };
++    visit(video.ownerDocument);
++    if (videos.length !== 1 || videos[0] !== video) {
++      return { sources: [], fallback: false };
++    }
++    this.#rememberMedia(this.contentWindow.performance.getEntriesByType("resource"));
++    return { sources: [...this.#mediaResources.keys()].reverse(), fallback: true };
++  }
++
++  didDestroy() {
++    this.#mediaObserver?.disconnect();
++    this.#mediaResources.clear();
++  }
++
+   notifyParentOfViewportFit() {
+     if (this.triggerViewportFitChange) {
+       this.contentWindow.cancelIdleCallback(this.triggerViewportFitChange);
+@@ -166,6 +224,28 @@ export class ContentDelegateChild extends GeckoViewActorChild {
          const isMedia =
            elementType === "HTMLVideoElement" ||
            elementType === "HTMLAudioElement";
@@ -15,20 +87,32 @@ index 2bf88b9e9e..3c60527f77 100644
 +          ? video.duration
 +          : null;
 +        const videoSrc = video?.currentSrc || null;
-+        const hasDownloadableVideo =
-+          videoDuration > 10 &&
-+          /^https?:\/\//i.test(videoSrc) &&
-+          !/\.(?:m3u8|mpd)(?:[?#]|$)/i.test(videoSrc);
++        const { sources: videoSources, fallback: videoSourceIsFallback } =
++          videoDuration > 10 ? this.#videoSources(video) : { sources: [], fallback: false };
++        const hasDownloadableVideo = videoSources.length > 0;
++        let videoContext = null;
++        if (hasDownloadableVideo) {
++          const referrer = Cc["@mozilla.org/referrer-info;1"].createInstance(Ci.nsIReferrerInfo);
++          referrer.initWithElement(video);
++          videoContext = {
++            innerWindowId: this.manager.innerWindowId,
++            referrerInfo: lazy.E10SUtils.serializeReferrerInfo(referrer),
++            userAgent: this.contentWindow.navigator.userAgent,
++          };
++        }
          let elementSrc = (isImage || isMedia) && (node.currentSrc || node.src);
          if (elementSrc) {
            const isBlob = elementSrc.startsWith("blob:");
-@@ -177,4 +190,4 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+@@ -174,7 +254,7 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+           }
+         }
+ 
 -        if (uri || isImage || isMedia) {
 +        if (uri || isImage || isMedia || hasDownloadableVideo) {
            const msg = {
              // We don't have full zoom on Android, so using CSS coordinates
              // here is fine, since the CSS coordinate spaces match between the
-@@ -188,8 +201,10 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+@@ -188,8 +268,13 @@ export class ContentDelegateChild extends GeckoViewActorChild {
              uri,
              title: (title && title.substring(0, MAX_TEXT_LENGTH)) || null,
              alt: (alt && alt.substring(0, MAX_TEXT_LENGTH)) || null,
@@ -37,10 +121,13 @@ index 2bf88b9e9e..3c60527f77 100644
              elementSrc: elementSrc || null,
 +            videoSrc,
 +            videoDuration,
++            videoSources,
++            videoSourceIsFallback,
++            videoContext,
              textContent:
                (node.textContent &&
                  node.textContent.substring(0, MAX_TEXT_LENGTH)) ||
-@@ -198,6 +213,8 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+@@ -198,6 +283,8 @@ export class ContentDelegateChild extends GeckoViewActorChild {
                (node.innerText &&
                  node.innerText.substring(0, MAX_TEXT_LENGTH)) ||
                null,
@@ -49,3 +136,16 @@ index 2bf88b9e9e..3c60527f77 100644
            };
  
            this.sendAsyncMessage("GeckoView:ContextMenu", msg);
+@@ -228,6 +315,12 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+         break;
+       case "DOMContentLoaded": {
+         if (aEvent.originalTarget.documentGlobal == this.contentWindow) {
++          if (!this.#mediaObserver) {
++            this.#mediaObserver = new this.contentWindow.PerformanceObserver(list => {
++              this.#rememberMedia(list.getEntries());
++            });
++            this.#mediaObserver.observe({ type: "resource", buffered: true });
++          }
+           // If loaded content doesn't have viewport-fit, parent still
+           // uses old value of previous content.
+           this.notifyParentOfViewportFit();
