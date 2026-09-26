@@ -158,11 +158,26 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.11
 
       - name: Build Gecko
+        id: gecko
+        shell: bash
         env:
           CC: clang
           CXX: clang++
           LD: ld64.lld
-        run: ./tools/development/build-gecko.sh ${{ matrix.build_args }} ${{ inputs.fast_build && '--fast-build' || '' }}
+        run: ./tools/development/build-gecko.sh ${{ matrix.build_args }} ${{ inputs.fast_build && '--fast-build' || '' }} 2>&1 | tee "$RUNNER_TEMP/gecko-build.log"
+
+      - name: Report Gecko build errors
+        if: ${{ failure() && steps.gecko.outcome == 'failure' }}
+        shell: python
+        run: |
+          import os
+          from pathlib import Path
+
+          log = Path(os.environ['RUNNER_TEMP']) / 'gecko-build.log'
+          errors = [line for line in log.read_text(errors='replace').splitlines() if 'error:' in line.lower()]
+          for line in errors[-10:]:
+              escaped = line.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print(f'::error title=Gecko build::{escaped}')
 
       - name: Build idevice support library
         run: ./tools/development/build-idevice.sh

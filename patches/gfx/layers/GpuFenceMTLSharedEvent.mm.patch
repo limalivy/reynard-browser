@@ -1,0 +1,14 @@
+diff --git a/gfx/layers/GpuFenceMTLSharedEvent.mm b/gfx/layers/GpuFenceMTLSharedEvent.mm
+index 3add3e1ee7..4125bfd084 100644
+--- a/gfx/layers/GpuFenceMTLSharedEvent.mm
++++ b/gfx/layers/GpuFenceMTLSharedEvent.mm
+@@ -38,6 +38,7 @@ bool GpuFenceMTLSharedEvent::HasCompleted() {
+ bool GpuFenceMTLSharedEvent::ClientWait(TimeDuration aTimeout) {
+-  if (@available(macOS 12.0, iOS 15.0, *)) {
+-    const auto sharedEvent = (__bridge id<MTLSharedEvent>)mSharedEvent;
++  const auto sharedEvent = (__bridge id<MTLSharedEvent>)mSharedEvent;
++  if ([sharedEvent
++          respondsToSelector:@selector(waitUntilSignaledValue:timeoutMS:)]) {
+     const uint64_t timeoutMs =
+         aTimeout == TimeDuration::Forever()
+             ? std::numeric_limits<uint64_t>::max()
