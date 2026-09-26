@@ -10,6 +10,7 @@ TARGET="aarch64-apple-ios"
 USE_SCCACHE=false
 AUTO_CLOBBER=false
 DISABLE_JEMALLOC=false
+FAST_BUILD=false
 
 for arg in "$@"; do
 	case "$arg" in
@@ -21,6 +22,9 @@ for arg in "$@"; do
 			;;
 		--disable-jemalloc)
 			DISABLE_JEMALLOC=true
+			;;
+		--fast-build)
+			FAST_BUILD=true
 			;;
 	esac
 done
@@ -45,10 +49,14 @@ fi
 	echo "ac_add_options --enable-application=mobile/ios"
 	echo "ac_add_options --target=$TARGET"
 	echo "ac_add_options --enable-ios-target=13.0"
-	echo "ac_add_options --enable-optimize"
 	echo "ac_add_options --enable-release"
 	echo "ac_add_options --enable-rust-simd"
-	echo "ac_add_options --enable-lto"
+	if [ "$FAST_BUILD" = true ]; then
+		echo "ac_add_options --disable-optimize"
+	else
+		echo "ac_add_options --enable-optimize"
+		echo "ac_add_options --enable-lto"
+	fi
 	echo "ac_add_options --disable-debug"
 	echo "ac_add_options --disable-tests"
 	echo "ac_add_options --enable-bootstrap"

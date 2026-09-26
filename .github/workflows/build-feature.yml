@@ -18,3 +18,4 @@ jobs:
       build_normal_ipa: true
       build_trollstore_tipa: false
       build_jailbroken_ipa: false
+      fast_build: true

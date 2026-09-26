@@ -27,6 +27,11 @@ on:
         required: false
         default: true
         type: boolean
+      fast_build:
+        description: Disable optimization and LTO for validation builds
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -157,7 +162,7 @@ jobs:
           CC: clang
           CXX: clang++
           LD: ld64.lld
-        run: ./tools/development/build-gecko.sh ${{ matrix.build_args }}
+        run: ./tools/development/build-gecko.sh ${{ matrix.build_args }} ${{ inputs.fast_build && '--fast-build' || '' }}
 
       - name: Build idevice support library
         run: ./tools/development/build-idevice.sh
