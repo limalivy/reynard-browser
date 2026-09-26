@@ -1,5 +1,5 @@
 diff --git a/mobile/shared/actors/ContentDelegateChild.sys.mjs b/mobile/shared/actors/ContentDelegateChild.sys.mjs
-index 2bf88b9e9e..7d1719fa0d 100644
+index 2bf88b9e9e..4ccfa3b02e 100644
 --- a/mobile/shared/actors/ContentDelegateChild.sys.mjs
 +++ b/mobile/shared/actors/ContentDelegateChild.sys.mjs
 @@ -8,6 +8,7 @@ const lazy = {};
@@ -74,22 +74,43 @@ index 2bf88b9e9e..7d1719fa0d 100644
    notifyParentOfViewportFit() {
      if (this.triggerViewportFitChange) {
        this.contentWindow.cancelIdleCallback(this.triggerViewportFitChange);
-@@ -166,6 +224,28 @@ export class ContentDelegateChild extends GeckoViewActorChild {
-         const isMedia =
-           elementType === "HTMLVideoElement" ||
-           elementType === "HTMLAudioElement";
+@@ -126,7 +184,22 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+ 
+     switch (aEvent.type) {
+       case "contextmenu": {
+-        if (aEvent.defaultPrevented) {
++        const node = aEvent.composedTarget;
 +        const video =
 +          aEvent.composedPath().find(element => element.localName === "video") ||
-+          node.ownerDocument
-+            .elementsFromPoint(aEvent.clientX, aEvent.clientY)
++          node?.ownerDocument
++            ?.elementsFromPoint(aEvent.clientX, aEvent.clientY)
 +            .find(element => element.localName === "video");
 +        const videoDuration = Number.isFinite(video?.duration)
 +          ? video.duration
 +          : null;
-+        const videoSrc = video?.currentSrc || null;
 +        const { sources: videoSources, fallback: videoSourceIsFallback } =
 +          videoDuration > 10 ? this.#videoSources(video) : { sources: [], fallback: false };
 +        const hasDownloadableVideo = videoSources.length > 0;
++
++        // Players often consume contextmenu to display their own controls.
++        // Keep the native download action for a qualifying video at this point.
++        if (aEvent.defaultPrevented && !hasDownloadableVideo) {
+           return;
+         }
+ 
+@@ -153,7 +226,6 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+           return Services.io.newURI(aUri, null, aBaseUri).displaySpec;
+         }
+ 
+-        const node = aEvent.composedTarget;
+         const baseUri = node.ownerDocument.baseURIObject;
+         const uri = createAbsoluteUri(
+           baseUri,
+@@ -166,6 +238,17 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+         const isMedia =
+           elementType === "HTMLVideoElement" ||
+           elementType === "HTMLAudioElement";
++        const videoSrc = video?.currentSrc || null;
 +        let videoContext = null;
 +        if (hasDownloadableVideo) {
 +          const referrer = Cc["@mozilla.org/referrer-info;1"].createInstance(Ci.nsIReferrerInfo);
@@ -103,7 +124,7 @@ index 2bf88b9e9e..7d1719fa0d 100644
          let elementSrc = (isImage || isMedia) && (node.currentSrc || node.src);
          if (elementSrc) {
            const isBlob = elementSrc.startsWith("blob:");
-@@ -174,7 +254,7 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+@@ -174,7 +257,7 @@ export class ContentDelegateChild extends GeckoViewActorChild {
            }
          }
  
@@ -112,7 +133,7 @@ index 2bf88b9e9e..7d1719fa0d 100644
            const msg = {
              // We don't have full zoom on Android, so using CSS coordinates
              // here is fine, since the CSS coordinate spaces match between the
-@@ -188,8 +268,13 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+@@ -188,8 +271,13 @@ export class ContentDelegateChild extends GeckoViewActorChild {
              uri,
              title: (title && title.substring(0, MAX_TEXT_LENGTH)) || null,
              alt: (alt && alt.substring(0, MAX_TEXT_LENGTH)) || null,
@@ -127,7 +148,7 @@ index 2bf88b9e9e..7d1719fa0d 100644
              textContent:
                (node.textContent &&
                  node.textContent.substring(0, MAX_TEXT_LENGTH)) ||
-@@ -198,6 +283,8 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+@@ -198,6 +286,8 @@ export class ContentDelegateChild extends GeckoViewActorChild {
                (node.innerText &&
                  node.innerText.substring(0, MAX_TEXT_LENGTH)) ||
                null,
@@ -136,7 +157,7 @@ index 2bf88b9e9e..7d1719fa0d 100644
            };
  
            this.sendAsyncMessage("GeckoView:ContextMenu", msg);
-@@ -228,6 +315,12 @@ export class ContentDelegateChild extends GeckoViewActorChild {
+@@ -228,6 +318,12 @@ export class ContentDelegateChild extends GeckoViewActorChild {
          break;
        case "DOMContentLoaded": {
          if (aEvent.originalTarget.documentGlobal == this.contentWindow) {

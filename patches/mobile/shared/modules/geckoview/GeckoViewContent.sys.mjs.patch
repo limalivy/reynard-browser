@@ -1,8 +1,8 @@
 diff --git a/mobile/shared/modules/geckoview/GeckoViewContent.sys.mjs b/mobile/shared/modules/geckoview/GeckoViewContent.sys.mjs
-index 635806ea17..843b16a8b2 100644
+index 635806ea17..56b1956c8e 100644
 --- a/mobile/shared/modules/geckoview/GeckoViewContent.sys.mjs
 +++ b/mobile/shared/modules/geckoview/GeckoViewContent.sys.mjs
-@@ -3,16 +3,108 @@
+@@ -3,16 +3,109 @@
   * You can obtain one at http://mozilla.org/MPL/2.0/. */
  
  import { GeckoViewModule } from "resource://gre/modules/GeckoViewModule.sys.mjs";
@@ -42,6 +42,7 @@ index 635806ea17..843b16a8b2 100644
 +      source: {
 +        url: data.url,
 +        loadingPrincipal: job.principal,
++        triggeringPrincipal: job.principal,
 +        cookieJarSettings: job.cookieJarSettings,
 +        referrerInfo: job.referrerInfo,
 +        isPrivate: job.principal.originAttributes.privateBrowsingId > 0,
@@ -111,7 +112,7 @@ index 635806ea17..843b16a8b2 100644
        "GeckoView:ProcessBackPressed",
        "GeckoView:ScrollBy",
        "GeckoView:ScrollTo",
-@@ -58,6 +150,7 @@ export class GeckoViewContent extends GeckoViewModule {
+@@ -58,6 +151,7 @@ export class GeckoViewContent extends GeckoViewModule {
    }
  
    onDisable() {
@@ -119,7 +120,7 @@ index 635806ea17..843b16a8b2 100644
      this.window.removeEventListener(
        "MozDOMFullscreen:Entered",
        this,
-@@ -174,6 +267,18 @@ export class GeckoViewContent extends GeckoViewModule {
+@@ -174,6 +268,18 @@ export class GeckoViewContent extends GeckoViewModule {
      debug`onEvent: event=${aEvent}, data=${aData}`;
  
      switch (aEvent) {
@@ -138,7 +139,7 @@ index 635806ea17..843b16a8b2 100644
        case "GeckoViewContent:ExitFullScreen":
          this.browser.ownerDocument.exitFullscreen();
          break;
-@@ -277,6 +382,12 @@ export class GeckoViewContent extends GeckoViewModule {
+@@ -277,6 +383,12 @@ export class GeckoViewContent extends GeckoViewModule {
        case "GeckoView:GetBrokenSiteReport":
          this._getBrokenSiteReport(aCallback);
          break;
@@ -151,7 +152,7 @@ index 635806ea17..843b16a8b2 100644
        case "GeckoView:GetWebCompatInfo":
          this._getWebCompatInfo(aCallback);
          break;
-@@ -491,6 +602,41 @@ export class GeckoViewContent extends GeckoViewModule {
+@@ -491,6 +603,41 @@ export class GeckoViewContent extends GeckoViewModule {
      aCallback.onSuccess(await this.actor.containsFormData());
    }
  

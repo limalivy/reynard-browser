@@ -1,0 +1,58 @@
+diff --git a/toolkit/components/downloads/DownloadCore.sys.mjs b/toolkit/components/downloads/DownloadCore.sys.mjs
+index 1889146a55..6797612fc4 100644
+--- a/toolkit/components/downloads/DownloadCore.sys.mjs
++++ b/toolkit/components/downloads/DownloadCore.sys.mjs
+@@ -1677,6 +1677,13 @@ DownloadSource.prototype = {
+    */
+   loadingPrincipal: null,
+ 
++  /**
++   * Optional triggering principal for a download initiated by a document.
++   * Preserves that document's same-origin referrer-policy calculation.
++   * Null keeps the system-principal behavior used by other callers.
++   */
++  triggeringPrincipal: null,
++
+   /**
+    * Represents the cookieJarSettings of the download source, could be null if
+    * the download source is not from a document.
+@@ -1727,6 +1734,12 @@ DownloadSource.prototype = {
+         : lazy.E10SUtils.serializePrincipal(this.loadingPrincipal);
+     }
+ 
++    if (this.triggeringPrincipal) {
++      serializable.triggeringPrincipal = isString(this.triggeringPrincipal)
++        ? this.triggeringPrincipal
++        : lazy.E10SUtils.serializePrincipal(this.triggeringPrincipal);
++    }
++
+     if (this.cookieJarSettings) {
+       serializable.cookieJarSettings = isString(this.cookieJarSettings)
+         ? this.cookieJarSettings
+@@ -1830,6 +1843,13 @@ DownloadSource.fromSerializable = function (aSerializable) {
+       source.adjustChannel = aSerializable.adjustChannel;
+     }
+ 
++    if ("triggeringPrincipal" in aSerializable) {
++      source.triggeringPrincipal =
++        aSerializable.triggeringPrincipal instanceof Ci.nsIPrincipal
++          ? aSerializable.triggeringPrincipal
++          : lazy.E10SUtils.deserializePrincipal(aSerializable.triggeringPrincipal);
++    }
++
+     if ("allowHttpStatus" in aSerializable) {
+       source.allowHttpStatus = aSerializable.allowHttpStatus;
+     }
+@@ -2654,9 +2674,10 @@ DownloadCopySaver.prototype = {
+             uri: download.source.url,
+             contentPolicyType: Ci.nsIContentPolicy.TYPE_SAVEAS_DOWNLOAD,
+             loadingPrincipal: download.source.loadingPrincipal,
+-            // triggeringPrincipal must be the system principal to prevent the
+-            // request from being mistaken as a third-party request.
++            // Keep the system default for callers such as extensions. A
++            // document can opt in to its own referrer-policy origin checks.
+             triggeringPrincipal:
++              download.source.triggeringPrincipal ??
+               Services.scriptSecurityManager.getSystemPrincipal(),
+             securityFlags:
+               Ci.nsILoadInfo.SEC_ALLOW_CROSS_ORIGIN_SEC_CONTEXT_IS_NULL,
