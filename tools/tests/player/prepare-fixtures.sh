@@ -16,3 +16,6 @@ else
     ffmpeg -hide_banner -loglevel error -y -i "$FIXTURES/sample.m3u8" -c copy "$FIXTURES/player-hls.mp4"
 fi
 printf 'Invalid video fixture\n' > "$FIXTURES/player-invalid.mp4"
+
+ffmpeg -hide_banner -loglevel error -y -f lavfi -i "testsrc2=size=180x320:rate=30:duration=30" \
+    -c:v libx264 -preset veryfast -pix_fmt yuv420p -movflags +faststart "$FIXTURES/player-portrait.mp4"

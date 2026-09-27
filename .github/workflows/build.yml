@@ -185,6 +185,8 @@ jobs:
           sh tools/development/build-media.sh ${{ matrix.variant == 'simulator' && '--simulator' || '' }}
           swiftc browser/Reynard/Client/Stores/HLSPlaylist.swift tools/tests/HLSPlaylistTests.swift -o "$RUNNER_TEMP/hls-tests"
           "$RUNNER_TEMP/hls-tests"
+          swiftc browser/Reynard/Client/Interface/Library/Downloads/VideoPlaybackProgressStore.swift tools/tests/VideoPlaybackProgressTests.swift -o "$RUNNER_TEMP/video-progress-tests"
+          "$RUNNER_TEMP/video-progress-tests"
 
       - name: Restore compatible player cache
         uses: actions/cache@v4

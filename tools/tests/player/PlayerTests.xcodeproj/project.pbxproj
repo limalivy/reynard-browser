@@ -76,6 +76,7 @@
 				<string>000000000000000000000004</string>
 				<string>000000000000000000000006</string>
 				<string>000000000000000000000008</string>
+				<string>00000000000000000000002A</string>
 			</array>
 			<key>runOnlyForDeploymentPostprocessing</key>
 			<integer>0</integer>
@@ -560,6 +561,8 @@ codesign --force --sign - "$TARGET_BUILD_DIR/$WRAPPER_NAME/Frameworks/MobileVLCK
 				<string>00000000000000000000000F</string>
 				<string>000000000000000000000011</string>
 				<string>00000000000000000000001F</string>
+				<string>000000000000000000000029</string>
+				<string>00000000000000000000002B</string>
 			</array>
 		</dict>
 		<key>00000000000000000000001F</key>
@@ -586,6 +589,7 @@ codesign --force --sign - "$TARGET_BUILD_DIR/$WRAPPER_NAME/Frameworks/MobileVLCK
 				<string>00000000000000000000000E</string>
 				<string>000000000000000000000010</string>
 				<string>000000000000000000000012</string>
+				<string>00000000000000000000002C</string>
 			</array>
 			<key>runOnlyForDeploymentPostprocessing</key>
 			<integer>0</integer>
@@ -622,6 +626,42 @@ codesign --force --sign - "$TARGET_BUILD_DIR/$WRAPPER_NAME/Frameworks/MobileVLCK
 			</array>
 			<key>runOnlyForDeploymentPostprocessing</key>
 			<integer>0</integer>
+		</dict>
+		<key>000000000000000000000029</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>../../../browser/Reynard/Client/Interface/Library/Downloads/VideoPlaybackProgressStore.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>00000000000000000000002A</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>000000000000000000000029</string>
+		</dict>
+		<key>00000000000000000000002B</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>file</string>
+			<key>path</key>
+			<string>fixtures/player-portrait.mp4</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>00000000000000000000002C</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>00000000000000000000002B</string>
 		</dict>
 	</dict>
 	<key>rootObject</key>
