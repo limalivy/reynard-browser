@@ -16,7 +16,7 @@ jobs:
       checkout_ref: ${{ github.sha }}
       nightly: true
       build_normal_ipa: true
-      build_trollstore_tipa: false
+      build_trollstore_tipa: true
       build_jailbroken_ipa: false
       fast_build: false
       build_simulator: true
