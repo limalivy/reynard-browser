@@ -122,15 +122,17 @@ final class SessionManager {
             return
         }
         sessionsRequestedActive[ObjectIdentifier(session)] = session
+        session.setSuspendMediaWhenInactive(false)
         session.setActive(isApplicationForeground)
         session.setFocused(true)
     }
     
-    func deactivate(_ session: GeckoSession) {
+    func deactivate(_ session: GeckoSession, suspendingMedia: Bool = true) {
         sessionsRequestedActive.removeValue(forKey: ObjectIdentifier(session))
         guard session.isOpen() else {
             return
         }
+        session.setSuspendMediaWhenInactive(suspendingMedia)
         session.setFocused(false)
         if pictureInPictureSession === session {
             return
@@ -248,6 +250,11 @@ final class SessionManager {
         let identifier = ObjectIdentifier(session)
         externalResponseReferenceCounts.removeValue(forKey: identifier)
         deferredExternalResponseCleanups.removeValue(forKey: identifier)
+    }
+
+    func canDiscardForMemoryPressure(_ session: GeckoSession) -> Bool {
+        return externalResponseReferenceCounts[ObjectIdentifier(session)] == nil
+            && pictureInPictureSession !== session
     }
     
     // MARK: - Picture in Picture

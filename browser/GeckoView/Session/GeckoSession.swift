@@ -471,6 +471,13 @@ public class GeckoSession {
             flushSessionState()
         }
     }
+
+    public func setSuspendMediaWhenInactive(_ suspend: Bool) {
+        dispatcher.dispatch(
+            type: "GeckoView:UpdateSettings",
+            message: ["suspendMediaWhenInactive": suspend]
+        )
+    }
     
     public func setFocused(_ focused: Bool) {
         dispatcher.dispatch(type: "GeckoView:SetFocused", message: ["focused": focused])

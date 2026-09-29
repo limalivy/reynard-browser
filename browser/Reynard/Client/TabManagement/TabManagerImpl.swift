@@ -105,6 +105,29 @@ final class TabManagerImplementation: NSObject, TabManager {
         
         selectTab(at: selectedTabIndex, mode: selectedTabMode)
     }
+
+    func handleMemoryWarning() {
+        let selectedSession = selectedTab?.session
+        var discardedSessionCount = 0
+        for mode in [TabMode.regular, .private] {
+            for (index, tab) in tabs(for: mode).enumerated() {
+                guard tab.session !== selectedSession,
+                      tab.session.isOpen(),
+                      !tab.state.isPlayingAudio,
+                      !DownloadStore.shared.hasCapturedDownload(for: tab.session),
+                      sessionManager.canDiscardForMemoryPressure(tab.session) else {
+                    continue
+                }
+                closeSessionForRestoration(tab.session, tab: tab)
+                notifyUpdate(at: index, mode: mode, reason: .loading)
+                discardedSessionCount += 1
+            }
+        }
+        if discardedSessionCount > 0 {
+            persistState()
+            NSLog("Discarded %d background sessions after memory warning", discardedSessionCount)
+        }
+    }
     
     // MARK: - Persistence And Lookup
     
@@ -602,14 +625,7 @@ final class TabManagerImplementation: NSObject, TabManager {
         
         let didTerminateSelectedTab = selectedTab?.session === session
         let tab = tabs(for: location.mode)[location.index]
-        if let sessionState = session.currentSessionState {
-            tab.state.tabSessionState = sessionManager.usesStoredNavigationHistory(for: tab.id)
-            ? sessionState.currentPageState()
-            : sessionState
-        }
-        sessionManager.close(session)
-        prepareRestoration(for: tab)
-        tab.state.loadingState = .idle
+        closeSessionForRestoration(session, tab: tab)
         notifyUpdate(at: location.index, mode: location.mode, reason: .loading)
         persistState()
         
@@ -623,6 +639,18 @@ final class TabManagerImplementation: NSObject, TabManager {
         } else {
             delegate?.tabManagerDidTerminateSelectedTab(self)
         }
+    }
+
+    private func closeSessionForRestoration(_ session: GeckoSession, tab: Tab) {
+        if let sessionState = session.currentSessionState {
+            tab.state.tabSessionState = sessionManager.usesStoredNavigationHistory(for: tab.id)
+                ? sessionState.currentPageState()
+                : sessionState
+        }
+        sessionManager.close(session)
+        prepareRestoration(for: tab)
+        tab.state.loadingState = .idle
+        tab.state.isPlayingAudio = false
     }
     
     // MARK: - Tab Lifecycle
@@ -755,9 +783,12 @@ final class TabManagerImplementation: NSObject, TabManager {
         scheduleFaviconUpdate(forTabAt: index, mode: mode)
         recordTransferredHistory(for: tab, title: title)
         if selecting {
-            if let previousSession = selectedTab?.session,
-               previousSession !== session {
-                sessionManager.deactivate(previousSession)
+            if let previousTab = selectedTab,
+               previousTab.session !== session {
+                sessionManager.deactivate(
+                    previousTab.session,
+                    suspendingMedia: !previousTab.state.isPlayingAudio
+                )
             }
             selectedTabMode = mode
             delegate?.tabManager(self, animateNewTabSelectionAt: index) { [weak self] in
@@ -787,7 +818,10 @@ final class TabManagerImplementation: NSObject, TabManager {
         let selectedTab = tabs(for: mode)[index]
         if previousTab?.session !== selectedTab.session,
            let previousSession = previousTab?.session {
-            sessionManager.deactivate(previousSession)
+            sessionManager.deactivate(
+                previousSession,
+                suspendingMedia: previousTab?.state.isPlayingAudio != true
+            )
         }
         recoverSelectedSessionIfNeeded()
         restoreTabIfNeeded(selectedTab)
@@ -1650,9 +1684,12 @@ extension TabManagerImplementation: NavigationDelegate {
         
         guard target != .background else { return newSession }
         
-        if let previousSession = selectedTab?.session,
-           previousSession !== newSession {
-            sessionManager.deactivate(previousSession)
+        if let previousTab = selectedTab,
+           previousTab.session !== newSession {
+            sessionManager.deactivate(
+                previousTab.session,
+                suspendingMedia: !previousTab.state.isPlayingAudio
+            )
         }
         selectedTabMode = mode
         delegate?.tabManager(self, animateNewTabSelectionAt: index) { [weak self] in

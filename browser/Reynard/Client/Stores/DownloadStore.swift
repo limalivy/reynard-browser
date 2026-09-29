@@ -407,6 +407,12 @@ final class DownloadStore: NSObject {
             }
         }
     }
+
+    func hasCapturedDownload(for session: GeckoSession) -> Bool {
+        return stateQueue.sync {
+            capturedDownloads.values.contains { $0.originatingSession === session }
+        }
+    }
     
     // MARK: - Download Management
     

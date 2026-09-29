@@ -29,6 +29,7 @@ protocol TabManager: AnyObject {
     
     func applicationWillResignActive()
     func applicationDidBecomeActive()
+    func handleMemoryWarning()
     func createInitialTab()
     @discardableResult
     func addTab(selecting: Bool, windowId: String?, at index: Int?, isPrivate: Bool) -> Int

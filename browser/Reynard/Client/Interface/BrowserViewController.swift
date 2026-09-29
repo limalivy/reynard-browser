@@ -186,6 +186,11 @@ final class BrowserViewController: UIViewController, GeckoScreenOrientationDeleg
         
         updateBrowserLayout(animated: false)
     }
+
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        tabManager.handleMemoryWarning()
+    }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
